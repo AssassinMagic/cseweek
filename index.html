@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSE Week - UMNTC</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>CSE Week 2025</h1>
+            <p class="subtitle">Hosted by PlumbBob and SESB at University of Minnesota Twin Cities</p>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="about" class="section">
+            <h2>About the Festival</h2>
+            <p>Join us for an exciting week-long celebration of Computer Science and Engineering! CSE Week features workshops, networking events, tech talks, and competitions designed to bring together students, faculty, and industry professionals.</p>
+        </section>
+
+        <section id="schedule" class="section">
+            <h2>Event Schedule</h2>
+            <div class="schedule-grid">
+                <div class="schedule-item">
+                    <div class="day">Monday</div>
+                    <div class="event-name">Opening Ceremony & Kickoff</div>
+                    <div class="time">6:00 PM - 8:00 PM</div>
+                    <div class="location">Keller Hall 3-180</div>
+                </div>
+                <div class="schedule-item">
+                    <div class="day">Tuesday</div>
+                    <div class="event-name">Tech Talk: Innovation in AI</div>
+                    <div class="time">7:00 PM - 9:00 PM</div>
+                    <div class="location">Mechanical Engineering 212</div>
+                </div>
+                <div class="schedule-item">
+                    <div class="day">Wednesday</div>
+                    <div class="event-name">Hackathon & Workshop</div>
+                    <div class="time">5:00 PM - 11:00 PM</div>
+                    <div class="location">Keller Hall Atrium</div>
+                </div>
+                <div class="schedule-item">
+                    <div class="day">Thursday</div>
+                    <div class="event-name">Career Fair & Networking</div>
+                    <div class="time">4:00 PM - 7:00 PM</div>
+                    <div class="location">Student Union</div>
+                </div>
+                <div class="schedule-item">
+                    <div class="day">Friday</div>
+                    <div class="event-name">Closing Celebration</div>
+                    <div class="time">6:00 PM - 9:00 PM</div>
+                    <div class="location">Keller Hall 3-180</div>
+                </div>
+            </div>
+        </section>
+
+        <section id="rsvp" class="section">
+            <h2>RSVP for CSE Week</h2>
+            <p>Reserve your spot for this amazing event! Fill out the form below to let us know you're coming.</p>
+            
+            <form id="rsvpForm" class="rsvp-form">
+                <div class="form-group">
+                    <label for="name">Full Name *</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="affiliation">Affiliation *</label>
+                    <select id="affiliation" name="affiliation" required>
+                        <option value="">-- Select --</option>
+                        <option value="student">Student</option>
+                        <option value="faculty">Faculty</option>
+                        <option value="alumni">Alumni</option>
+                        <option value="industry">Industry Professional</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Events Attending *</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="events" value="monday"> Monday - Opening Ceremony
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="events" value="tuesday"> Tuesday - Tech Talk
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="events" value="wednesday"> Wednesday - Hackathon
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="events" value="thursday"> Thursday - Career Fair
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" name="events" value="friday"> Friday - Closing Celebration
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="dietary">Dietary Restrictions (Optional)</label>
+                    <textarea id="dietary" name="dietary" rows="3" placeholder="Please let us know if you have any dietary restrictions..."></textarea>
+                </div>
+
+                <button type="submit" class="btn-submit">Submit RSVP</button>
+            </form>
+
+            <div id="confirmationMessage" class="confirmation-message hidden">
+                <h3>Thank you for your RSVP!</h3>
+                <p>We've received your registration and look forward to seeing you at CSE Week!</p>
+            </div>
+        </section>
+
+        <section id="rsvp-list" class="section">
+            <h2>Current RSVPs</h2>
+            <div id="rsvpCount" class="rsvp-count">0 attendees registered</div>
+            <div id="rsvpListContainer" class="rsvp-list"></div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 PlumbBob & SESB - University of Minnesota Twin Cities</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
