@@ -5,7 +5,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 // Note the paths and file casings now match your image
 import Layout from './components/Layout.jsx';
 import Home from './pages/home.jsx';
-import About from './pages/About.jsx';
+import About from './pages/about.jsx';
 import RSVP from './pages/rsvp.jsx'; // This is the selection page
 
 // --- UPDATED to match your /pages/rsvp/ folder ---
