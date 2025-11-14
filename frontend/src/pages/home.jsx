@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 // --- UPDATED to match your file names ---
-import CountdownTimer from '../components/countDownTimer.jsx';
-import LiveRSVP from '../components/liveRSVP.jsx';
+import CountdownTimer from '../components/CountDownTimer.jsx';
+import LiveRSVP from '../components/LiveRSVP.jsx';
 // ----------------------------------------
 
 export default function Home() {
