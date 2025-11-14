@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 
 // Import the layout and all your pages
 // Note the paths and file casings now match your image
-import Layout from './components/layout.jsx';
+import Layout from './components/Layout.jsx';
 import Home from './pages/home.jsx';
 import About from './pages/About.jsx';
 import RSVP from './pages/rsvp.jsx'; // This is the selection page

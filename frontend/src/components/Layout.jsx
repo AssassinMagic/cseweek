@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 // --- UPDATED to match your file names ---
-import Navbar from './navbar.jsx';
-import Footer from './footer.jsx';
+import Navbar from './Navbar.jsx';
+import Footer from './Footer.jsx';
 // ----------------------------------------
 
 /**
