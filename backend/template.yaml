@@ -33,11 +33,17 @@ Resources:
     Properties:
       CodeUri: src/ # Points to the 'src' folder
       Events:
-        RsvpApi:
+        RsvpApiPost: # Renamed to be specific
           Type: Api # This creates the API Gateway
           Properties:
             Path: /rsvp # The URL path will be .../rsvp
             Method: post # This function ONLY runs for POST requests
+
+        RsvpApiOptions: # ADDED THIS NEW EVENT
+          Type: Api
+          Properties:
+            Path: /rsvp
+            Method: options # This function now ALSO runs for OPTIONS requests
 
       # 3. Give this function *permission* to write to the table
       Policies:

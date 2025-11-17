@@ -9,6 +9,12 @@ dynamodb = boto3.resource('dynamodb')
 RSVP_TABLE_NAME = os.environ.get('RSVP_TABLE_NAME')
 table = dynamodb.Table(RSVP_TABLE_NAME)
 
+CORS_HEADERS = {
+    'Access-Control-Allow-Origin': '*', # Allows any domain to call your API
+    'Access-Control-Allow-Headers': 'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token',
+    'Access-Control-Allow-Methods': 'OPTIONS,POST' # We only allow POST and OPTIONS
+}
+
 def lambda_handler(event, context):
     """
     This function handles all RSVP submissions.
@@ -17,6 +23,15 @@ def lambda_handler(event, context):
     
     print(f"## Received event: {event}")
     
+
+    http_method = event.get('httpMethod')
+    if http_method == 'OPTIONS':
+        print("## Returning CORS preflight response")
+        return {
+            'statusCode': 200,
+            'headers': CORS_HEADERS,
+            'body': json.dumps({'message': 'CORS preflight OK'})
+        }
     try:
         # 1. Parse the incoming request body
         body = json.loads(event.get('body', '{}'))
