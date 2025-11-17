@@ -1,0 +1,56 @@
+# This is the SAM template file. It defines all the AWS resources for our backend.
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  cse-week-backend
+  Serverless backend for the CSE Week website (RSVPs, etc.)
+
+# Global settings for all resources, like our Lambda function
+Globals:
+  Function:
+    Timeout: 10 # 10-second timeout
+    Runtime: python3.12
+    Handler: app.lambda_handler # Points to the function in src/app.py
+    Architectures:
+      - x86_64
+
+Resources:
+  # 1. Our main DynamoDB Table for storing all RSVPs
+  RSVPTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: cse-week-rsvps
+      PrimaryKey:
+        Name: email # We'll use the user's email as the unique ID
+        Type: String
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  # 2. Our Lambda Function that will handle the RSVP logic
+  SubmitRsvpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/ # Points to the 'src' folder
+      Events:
+        RsvpApi:
+          Type: Api # This creates the API Gateway
+          Properties:
+            Path: /rsvp # The URL path will be .../rsvp
+            Method: post # This function ONLY runs for POST requests
+
+      # 3. Give this function *permission* to write to the table
+      Policies:
+        - DynamoDBCrudPolicy: # A pre-built SAM policy
+            TableName: !Ref RSVPTable # Grants Read/Write to the table we just defined
+
+      # 4. Pass the table's name as an environment variable to our Python code
+      Environment:
+        Variables:
+          RSVP_TABLE_NAME: !Ref RSVPTable
+
+Outputs:
+  # This will print the final, live URL of our API after we deploy
+  RsvpApiUrl:
+    Description: "API Gateway endpoint URL for the RSVP function"
+    Value: !Sub "https:${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/rsvp"
