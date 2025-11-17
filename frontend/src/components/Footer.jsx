@@ -11,7 +11,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div>
             <h3 className="text-xl font-bold text-white mb-2">CSEWeek.org</h3>
-            <p>An annual celebration of computing and community.</p>
+            <p>An annual celebration of science, engineering and community.</p>
             <p className="mt-4">&copy; {new Date().getFullYear()} CSEWeek. All rights reserved.</p>
           </div>
           <div>
@@ -25,9 +25,8 @@ export default function Footer() {
           <div>
             <h4 className="text-lg font-semibold text-white mb-2">Follow Us</h4>
             <div className="flex space-x-4">
-              <a href="#" className="hover:text-white">Twitter</a>
-              <a href="#" className="hover:text-white">Instagram</a>
-              <a href="#" className="hover:text-white">LinkedIn</a>
+              <a href="https://www.instagram.com/cseweek/" className="hover:text-white">Instagram</a>
+              <a href="https://plumbbob.umn.edu/" className="hover:text-white">Plumb Bob</a>
             </div>
           </div>
         </div>
