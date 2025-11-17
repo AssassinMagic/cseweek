@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 
 // This is your LIVE API URL
-const API_URL = 'https://kayvhqw889.execute-api.us-east-2.amazonaws.com/Prod/rsvp';
+const API_URL = 'https://api.cseweek.org/rsvp';
 
 export default function StudentRSVP() {
   // --- STATE HOOKS to manage form data ---
