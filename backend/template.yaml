@@ -1,62 +1,378 @@
-# This is the SAM template file. It defines all the AWS resources for our backend.
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 Description: >
   cse-week-backend
-  Serverless backend for the CSE Week website (RSVPs, etc.)
+  The complete serverless backend for the CSE Week public website (Phase 1).
+  This stack defines all APIs, functions, and databases.
 
-# Global settings for all resources, like our Lambda function
+Parameters:
+  pStage: # <-- NEW PARAMETER
+    Type: String
+    Description: "The stage name for this deployment (e.g., prod or dev)"
+    AllowedValues: [prod, dev]
+  pApiDomain:
+    Type: String
+    Description: "The full domain for your API (e.g., https://api.cseweek.org/Prod)"
+  pFrontendUrl:
+    Type: String
+    Description: "The full URL for your frontend (e.g., https://cseweek.org)"
+  pSesFromEmail:
+    Type: String
+    Description: "The AWS SES verified email for sending confirmations (e.g., noreply@cseweek.org)"
+  pStripeSecretKeyName:
+    Type: String
+    Description: "The name of the secret in AWS Secrets Manager holding your Stripe SECRET Key."
+    Default: "StripeSecretKey"
+  pStripeWebhookSecretName:
+    Type: String
+    Description: "The name of the secret in AWS Secrets Manager holding your Stripe WEBHOOK Secret."
+    Default: "StripeWebhookSecret"
+
 Globals:
   Function:
-    Timeout: 10 # 10-second timeout
+    Timeout: 30
     Runtime: python3.12
-    Handler: app.lambda_handler # Points to the function in src/app.py
+    Handler: app.lambda_handler
     Architectures:
       - x86_64
+  Api:
+    Cors:
+      AllowMethods: "'OPTIONS,POST,GET'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
 
 Resources:
-  # 1. Our main DynamoDB Table for storing all RSVPs
+  # ---------------------------------
+  # --- DynamoDB Tables ---
+  # ---------------------------------
   RSVPTable:
     Type: AWS::Serverless::SimpleTable
     Properties:
-      TableName: cse-week-rsvps
+      TableName: !Sub "cse-week-rsvps-${pStage}" # <-- EDITED
       PrimaryKey:
-        Name: email # We'll use the user's email as the unique ID
+        Name: email
         Type: String
-      ProvisionedThroughput:
-        ReadCapacityUnits: 1
-        WriteCapacityUnits: 1
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
 
-  # 2. Our Lambda Function that will handle the RSVP logic
+  ContactMessagesTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-contact-messages-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  VolunteerInterestTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-volunteer-interest-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  StudentGroupInterestTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-student-group-interest-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  StudentGroupsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-student-groups-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  SponsorsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-sponsors-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  EventsTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-events-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  ShopItemTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-shop-items-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  ShopOrdersTable:
+    Type: AWS::Serverless::SimpleTable
+    Properties:
+      TableName: !Sub "cse-week-shop-orders-${pStage}" # <-- EDITED
+      PrimaryKey: { Name: id, Type: String }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  DonationsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "cse-week-donations-${pStage}" # <-- EDITED
+      AttributeDefinitions:
+        - { AttributeName: donation_id, AttributeType: S }
+        - { AttributeName: is_public, AttributeType: S }
+        - { AttributeName: donated_at, AttributeType: N }
+      KeySchema:
+        - { AttributeName: donation_id, KeyType: HASH }
+      ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+      GlobalSecondaryIndexes:
+        - IndexName: !Sub "PublicDonationsIndex-${pStage}" # <-- EDITED
+          KeySchema:
+            - { AttributeName: is_public, KeyType: HASH }
+            - { AttributeName: donated_at, KeyType: RANGE }
+          Projection:
+            ProjectionType: INCLUDE
+            NonKeyAttributes: [name, amount_cents]
+          ProvisionedThroughput: { ReadCapacityUnits: 1, WriteCapacityUnits: 1 }
+
+  # ---------------------------------
+  # --- Lambda Functions (API) ---
+  # ---------------------------------
+
+  # 1. rsvp_handler
   SubmitRsvpFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: src/ # Points to the 'src' folder
+      CodeUri: src/rsvp_handler/
       Events:
-        RsvpApiPost: # Renamed to be specific
-          Type: Api # This creates the API Gateway
-          Properties:
-            Path: /rsvp # The URL path will be .../rsvp
-            Method: post # This function ONLY runs for POST requests
+        RsvpApi: { Type: Api, Properties: { Path: /rsvp, Method: post } }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref RSVPTable }
+        - Statement:
+            - { Effect: Allow, Action: [ses:SendEmail], Resource: "*" }
+      Environment:
+        Variables:
+          RSVP_TABLE_NAME: !Ref RSVPTable # <-- This automatically gets the new name
+          API_DOMAIN: !Ref pApiDomain
+          SES_FROM_EMAIL: !Ref pSesFromEmail
+          STRIPE_SECRET_KEY: !Sub "{{resolve:secretsmanager:${pStripeSecretKeyName}}}"
+          FRONTEND_URL: !Ref pFrontendUrl
 
-        RsvpApiOptions: # ADDED THIS NEW EVENT
+  # 2. confirm_rsvp_handler
+  ConfirmRsvpFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/confirm_rsvp_handler/
+      Events:
+        ConfirmApi: { Type: Api, Properties: { Path: /confirm, Method: get } }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref RSVPTable }
+      Environment:
+        Variables:
+          RSVP_TABLE_NAME: !Ref RSVPTable
+          FRONTEND_URL: !Ref pFrontendUrl
+
+  # 3. get_raffle_handler
+  GetRaffleInfoFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_raffle_handler/
+      Events:
+        RaffleApi:
           Type: Api
           Properties:
-            Path: /rsvp
-            Method: options # This function now ALSO runs for OPTIONS requests
-
-      # 3. Give this function *permission* to write to the table
+            Path: /raffle/{email}
+            Method: get
       Policies:
-        - DynamoDBCrudPolicy: # A pre-built SAM policy
-            TableName: !Ref RSVPTable # Grants Read/Write to the table we just defined
+        - DynamoDBReadPolicy: { TableName: !Ref RSVPTable }
+      Environment:
+        Variables:
+          RSVP_TABLE_NAME: !Ref RSVPTable
+          FRONTEND_URL: !Ref pFrontendUrl
 
-      # 4. Pass the table's name as an environment variable to our Python code
+  # 4. contact_handler
+  SubmitContactFormFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/contact_handler/
+      Events:
+        ContactApi: { Type: Api, Properties: { Path: /contact, Method: post } }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref ContactMessagesTable }
+      Environment:
+        Variables:
+          CONTACT_TABLE_NAME: !Ref ContactMessagesTable
+
+  # 5. volunteer_interest_handler
+  SubmitVolunteerInterestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/volunteer_interest_handler/
+      Events:
+        VolunteerApi:
+          { Type: Api, Properties: { Path: /volunteer/sign-up, Method: post } }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref VolunteerInterestTable }
+      Environment:
+        Variables:
+          VOLUNTEER_INTEREST_TABLE_NAME: !Ref VolunteerInterestTable
+
+  # 6. get_volunteers_handler
+  GetVolunteersFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_volunteers_handler/
+      Events:
+        GetVolunteersApi:
+          { Type: Api, Properties: { Path: /volunteers, Method: get } }
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref VolunteerInterestTable }
+      Environment:
+        Variables:
+          VOLUNTEER_INTEREST_TABLE_NAME: !Ref VolunteerInterestTable
+
+  # 7. student_group_interest_handler
+  SubmitStudentGroupInterestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/student_group_interest_handler/
+      Events:
+        StudentGroupApi:
+          {
+            Type: Api,
+            Properties: { Path: /student-groups/sign-up, Method: post },
+          }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref StudentGroupInterestTable }
+      Environment:
+        Variables:
+          STUDENT_GROUP_INTEREST_TABLE_NAME: !Ref StudentGroupInterestTable
+
+  # 8. get_student_groups_handler
+  GetStudentGroupsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_student_groups_handler/
+      Events:
+        GetStudentGroupsApi:
+          { Type: Api, Properties: { Path: /student-groups, Method: get } }
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref StudentGroupsTable }
+      Environment:
+        Variables:
+          STUDENT_GROUPS_TABLE_NAME: !Ref StudentGroupsTable
+
+  # 9. sponsor_request_handler
+  SubmitSponsorRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/sponsor_request_handler/
+      Events:
+        SponsorApi:
+          { Type: Api, Properties: { Path: /sponsor-request, Method: post } }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref SponsorsTable }
+      Environment:
+        Variables:
+          SPONSORS_TABLE_NAME: !Ref SponsorsTable
+
+  # 10. submit_donation_handler
+  SubmitDonationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/submit_donation_handler/
+      Events:
+        DonateApi: { Type: Api, Properties: { Path: /donate, Method: post } }
+      Environment:
+        Variables:
+          STRIPE_SECRET_KEY: !Sub "{{resolve:secretsmanager:${pStripeSecretKeyName}}}"
+          FRONTEND_URL: !Ref pFrontendUrl
+
+  # 11. get_donations_handler
+  GetDonationsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_donations_handler/
+      Events:
+        GetDonationsApi:
+          { Type: Api, Properties: { Path: /donate/list, Method: get } }
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref DonationsTable }
+      Environment:
+        Variables:
+          DONATIONS_TABLE_NAME: !Ref DonationsTable
+
+  # 12. stripe_webhook_handler
+  StripeWebhookHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/stripe_webhook_handler/
+      Events:
+        StripeWebhookApi:
+          { Type: Api, Properties: { Path: /stripe-webhook, Method: post } }
+      Policies:
+        - DynamoDBCrudPolicy: { TableName: !Ref DonationsTable }
+        - DynamoDBCrudPolicy: { TableName: !Ref ShopOrdersTable }
+      Environment:
+        Variables:
+          DONATIONS_TABLE_NAME: !Ref DonationsTable
+          SHOP_ORDERS_TABLE_NAME: !Ref ShopOrdersTable
+          STRIPE_WEBHOOK_SECRET: !Sub "{{resolve:secretsmanager:${pStripeWebhookSecretName}}}"
+          STRIPE_SECRET_KEY: !Sub "{{resolve:secretsmanager:${pStripeSecretKeyName}}}"
+
+  # 13. get_events_handler
+  GetEventsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_events_handler/
+      Events:
+        GetEventsApi: { Type: Api, Properties: { Path: /events, Method: get } }
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref EventsTable }
+      Environment:
+        Variables:
+          EVENTS_TABLE_NAME: !Ref EventsTable
+
+  # 14. get_shop_items_handler
+  GetShopItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_shop_items_handler/
+      Events:
+        GetShopItemsApi:
+          { Type: Api, Properties: { Path: /shop/items, Method: get } }
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref ShopItemTable }
+      Environment:
+        Variables:
+          SHOP_ITEM_TABLE_NAME: !Ref ShopItemTable
+
+  # 15. shop_checkout_handler
+  ShopCheckoutFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/shop_checkout_handler/
+      Events:
+        ShopCheckoutApi:
+          { Type: Api, Properties: { Path: /shop/checkout, Method: post } }
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref ShopItemTable } # To get prices
+      Environment:
+        Variables:
+          STRIPE_SECRET_KEY: !Sub "{{resolve:secretsmanager:${pStripeSecretKeyName}}}"
+          FRONTEND_URL: !Ref pFrontendUrl
+          SHOP_ITEM_TABLE_NAME: !Ref ShopItemTable
+
+  # 16. get_stats_handler
+  GetStatsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/get_stats_handler/
+      Events:
+        GetStatsApi: { Type: Api, Properties: { Path: /stats, Method: get } }
+      Policies:
+        - DynamoDBReadPolicy: { TableName: !Ref RSVPTable } # For the scan
       Environment:
         Variables:
           RSVP_TABLE_NAME: !Ref RSVPTable
 
 Outputs:
-  # This will print the final, live URL of our API after we deploy
-  RsvpApiUrl:
-    Description: "API Gateway endpoint URL for the RSVP function"
-    Value: !Sub "https:${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/rsvp"
+  ApiGatewayEndpoint:
+    Description: "The base URL for your API"
+    Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"
