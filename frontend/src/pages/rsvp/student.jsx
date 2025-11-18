@@ -5,10 +5,14 @@ import { Link } from 'react-router-dom';
 const API_URL = 'https://api.cseweek.org/rsvp';
 
 export default function StudentRSVP() {
-  // --- STATE HOOKS to manage form data ---
+  // --- STATE HOOKS for form data ---
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [school, setSchool] = useState('');
+  
+  // --- NEW STATE for conditional logic ---
+  const [selectedSchool, setSelectedSchool] = useState(''); // "UMNTC", "Other", or ""
+  const [otherSchool, setOtherSchool] = useState('');     // Text for "Other"
+  const [isCseStudent, setIsCseStudent] = useState(null);  // true, false, or null
 
   // --- STATE HOOKS for submission feedback ---
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -23,6 +27,34 @@ export default function StudentRSVP() {
     setIsError(false);
     setMessage('');
 
+    // --- Validation for new fields ---
+    if (selectedSchool === 'Other' && !otherSchool) {
+      setIsError(true);
+      setMessage('Please specify your school name.');
+      setIsSubmitting(false);
+      return;
+    }
+    if (selectedSchool === 'UMNTC' && isCseStudent === null) {
+      setIsError(true);
+      setMessage('Please specify if you are a CSE student.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    // --- Combine school data into one field for the backend ---
+    let finalSchoolName = '';
+    if (selectedSchool === 'UMNTC') {
+      finalSchoolName = 'University of Minnesota Twin Cities';
+      if (isCseStudent === true) {
+        finalSchoolName += ' (CSE Student)';
+      } else {
+        finalSchoolName += ' (Not CSE Student)';
+      }
+    } else if (selectedSchool === 'Other') {
+      finalSchoolName = otherSchool;
+    }
+    // --- End of data combining logic ---
+
     try {
       const response = await fetch(API_URL, {
         method: 'POST',
@@ -32,8 +64,8 @@ export default function StudentRSVP() {
         body: JSON.stringify({
           name: name,
           email: email,
-          school: school,
-          rsvp_type: 'student' // Send a type so we know what form this was
+          school: finalSchoolName, // Send our combined string
+          rsvp_type: 'student' 
         }),
       });
 
@@ -50,7 +82,9 @@ export default function StudentRSVP() {
       // Clear the form
       setName('');
       setEmail('');
-      setSchool('');
+      setSelectedSchool('');
+      setOtherSchool('');
+      setIsCseStudent(null);
 
     } catch (error) {
       console.error('Submission error:', error);
@@ -69,7 +103,6 @@ export default function StudentRSVP() {
         </div>
         <h1 className="text-4xl font-bold mb-6">Student RSVP</h1>
         
-        {/* --- Updated <form> tag --- */}
         <form className="w-full bg-white dark:bg-gray-800 p-8 rounded-lg shadow-md" onSubmit={handleSubmit}>
           
           {/* --- Name Input --- */}
@@ -100,18 +133,67 @@ export default function StudentRSVP() {
             />
           </div>
           
-          {/* --- School Input --- */}
+          {/* --- NEW: School Dropdown --- */}
           <div className="mb-4">
-            <label className="block text-sm font-bold mb-2" htmlFor="school">School / University</label>
-            <input 
-              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" 
-              id="school" 
-              type="text" 
-              placeholder="University of..."
-              value={school}
-              onChange={(e) => setSchool(e.target.value)}
-            />
+            <label className="block text-sm font-bold mb-2" htmlFor="school-select">School / University</label>
+            <select
+              id="school-select"
+              className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600"
+              value={selectedSchool}
+              onChange={(e) => setSelectedSchool(e.target.value)}
+              required
+            >
+              <option value="" disabled>Select an option...</option>
+              <option value="UMNTC">University of Minnesota Twin Cities</option>
+              <option value="Other">Other</option>
+            </select>
           </div>
+
+          {/* --- NEW: Conditional "Other" Text Input --- */}
+          {selectedSchool === 'Other' && (
+            <div className="mb-4">
+              <label className="block text-sm font-bold mb-2" htmlFor="other-school">Please specify your school</label>
+              <input 
+                className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600" 
+                id="other-school" 
+                type="text" 
+                placeholder="Your School Name"
+                value={otherSchool}
+                onChange={(e) => setOtherSchool(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          {/* --- NEW: Conditional "UMNTC" Checkbox --- */}
+          {selectedSchool === 'UMNTC' && (
+            <div className="mb-4 p-4 rounded-lg bg-gray-100 dark:bg-gray-900 border border-gray-200 dark:border-gray-700">
+              <label className="block text-sm font-bold mb-2">Are you a CSE student?</label>
+              <div className="flex items-center space-x-4">
+                <label className="flex items-center">
+                  <input 
+                    type="radio" 
+                    name="cse-student" 
+                    className="mr-2"
+                    checked={isCseStudent === true}
+                    onChange={() => setIsCseStudent(true)}
+                  /> Yes
+                </label>
+                <label className="flex items-center">
+                  <input 
+                    type="radio" 
+                    name="cse-student" 
+                    className="mr-2"
+                    checked={isCseStudent === false}
+                    onChange={() => setIsCseStudent(false)}
+                  /> No
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                This changes nothing and is used for marketing purposes.
+              </p>
+            </div>
+          )}
           
           {/* --- Submit Button --- */}
           <button 
